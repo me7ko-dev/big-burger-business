@@ -6,7 +6,7 @@
 - Windows: иконата на работния плот → `release/BigBurger-win32-x64/BigBurger.exe` (Electron 44, `npm run exe`).
   Самият electron.exe само се преименува (не се пипа) — заради Windows Smart App Control. Електрон бинарникът
   се сваля с `node node_modules/electron/install.js` (npm блокира postinstall скриптовете).
-- Браузър/телефон: https://me7ko-dev.github.io/big-burger-business/ (GitHub Actions → Pages при push в main).
+- Браузър/телефон: https://me7ko-dev.github.io/big-burger-business/ — `npm run deploy` качва dist в клона gh-pages (токенът няма workflow права, затова без Actions).
 - Разработка: `npm run dev`; тестове искат `npx vite preview --port 4173` да върви.
 
 ## Тестове (Playwright от глобалния npm: `export PW="$(npm root -g)/playwright"`)
