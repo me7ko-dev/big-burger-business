@@ -1,0 +1,10 @@
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const { chromium } = require(process.env.PW || 'playwright');
+const b = await chromium.connectOverCDP('http://127.0.0.1:9333');
+const page = b.contexts()[0].pages()[0];
+await page.waitForFunction(() => window.__game && window.__game.scene.isActive('Menu'), null, { timeout: 20000 });
+await page.waitForTimeout(1000);
+await page.screenshot({ path: 'test/out/exe.png' });
+console.log(await page.title(), await page.evaluate(() => [innerWidth, innerHeight]));
+await b.close();

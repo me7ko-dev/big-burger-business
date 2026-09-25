@@ -1,0 +1,26 @@
+{
+  "name": "big-burger-business",
+  "productName": "Big Burger Business",
+  "version": "0.1.0",
+  "description": "Игра за готвене и ресторант",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host --port 4173",
+    "check": "tsc --noEmit",
+    "exe": "npm run build && node desktop/build.mjs",
+    "desktop": "electron desktop/main.cjs"
+  },
+  "dependencies": {
+    "@fontsource/rubik": "^5.3.0",
+    "phaser": "3.90.0"
+  },
+  "devDependencies": {
+    "@electron/asar": "^4.3.0",
+    "electron": "^44.4.5",
+    "typescript": "~5.9.3",
+    "vite": "^7.3.6"
+  }
+}
