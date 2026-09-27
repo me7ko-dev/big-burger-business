@@ -801,7 +801,7 @@ export class Assembly {
       const icon = mkImg(g, 0, k === 'bun_top' ? -6 : 0, BIN_ICON[k], k === 'tomato' ? 0.72 : 0.6);
       c.add(icon);
       if (locked) { icon.setAlpha(0.3); c.add(mkImg(g, 0, 4, 'lock', 0.6)); }
-      const label = k === 'bun_top' ? 'ПИТКИ' : { cheese: 'СИРЕНЕ', tomato: 'ДОМАТИ', lettuce: 'МАРУЛЯ', onion: 'ЛУК', pickle: 'КРАСТАВ.' }[k as Topping];
+      const label = k === 'bun_top' ? 'ПИТКИ' : { cheese: 'КАШКАВАЛ', tomato: 'ДОМАТИ', lettuce: 'МАРУЛЯ', onion: 'ЛУК', pickle: 'КРАСТАВ.' }[k as Topping];
       c.add(txt(g, 0, 40, label, 14, { add: false }));
       if (k === 'tomato') {
         this.tomatoTxt = txt(g, 30, -18, '0', 20, { color: '#ffe14d', add: false });

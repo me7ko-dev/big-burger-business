@@ -16,7 +16,7 @@ export type Dish =
   | { kind: 'coffee'; cap: boolean };
 
 export const TOPPING_ORDER: Topping[] = ['cheese', 'tomato', 'onion', 'pickle', 'lettuce'];
-export const TOPPING_NAME: Record<Topping, string> = { cheese: 'Сирене', tomato: 'Домат', lettuce: 'Маруля', onion: 'Лук', pickle: 'Краставичка' };
+export const TOPPING_NAME: Record<Topping, string> = { cheese: 'Кашкавал', tomato: 'Домат', lettuce: 'Маруля', onion: 'Лук', pickle: 'Краставичка' };
 export const FLAVOR_NAME: Record<Flavor, string> = { cola: 'Кола', fanta: 'Фанта', sprite: 'Спрайт' };
 export const FLAVOR_COLOR: Record<Flavor, number> = { cola: 0xb3261e, fanta: 0xff8a1c, sprite: 0x43a047 };
 
@@ -40,10 +40,11 @@ export interface UpgradeDef {
   values: number[]; // стойност за всяко ниво (0 = начално)
   costs: number[]; // цена за преминаване към ниво 1, 2, ...
   fmt?: (v: number) => string;
+  more?: { step: number; grow: number }; // безкрайни нива след последното: +step към стойността, цената x grow
 }
 
 const sec = (v: number) => `${v.toFixed(1)} сек`;
-const plus = (v: number) => `+${v} лв`;
+const plus = (v: number) => `+${v} €`;
 const pct = (v: number) => `+${v}%`;
 
 export const UPGRADES: UpgradeDef[] = [
@@ -58,13 +59,13 @@ export const UPGRADES: UpgradeDef[] = [
   { id: 'soda_auto', tab: 'kitchen', name: 'Автоматичен автомат', desc: 'С едно докосване пълни чашата перфектно', icon: 'bolt', values: [0, 1], costs: [1100], fmt: (v) => (v ? 'ДА' : 'НЕ') },
   { id: 'plates', tab: 'kitchen', name: 'Още чинии', desc: 'Бургери, които сглобяваш едновременно', icon: 'plate', values: [2, 3, 4], costs: [320, 1400] },
   { id: 'knife', tab: 'kitchen', name: 'Остър нож', desc: 'Колко разреза трябват на продукт', icon: 'knife', values: [3, 2, 1], costs: [70, 320] },
-  { id: 'meat', tab: 'kitchen', name: 'Качествено месо', desc: 'Бургерите стават по-скъпи', icon: 'patty_raw', values: [0, 1, 2, 3], costs: [220, 800, 2200], fmt: plus },
-  { id: 'potatoes', tab: 'kitchen', name: 'Селски картофи', desc: 'Картофките стават по-скъпи', icon: 'potato', values: [0, 1, 2], costs: [260, 1100], fmt: plus },
-  { id: 'syrup', tab: 'kitchen', name: 'Леден сироп', desc: 'Напитките стават по-скъпи', icon: 'drink_fanta', values: [0, 1, 2], costs: [160, 850], fmt: plus },
+  { id: 'meat', tab: 'kitchen', name: 'Качествено месо', desc: 'Бургерите стават по-скъпи', icon: 'patty_raw', values: [0, 1, 2, 3], costs: [220, 800, 2200], fmt: plus, more: { step: 1, grow: 2 } },
+  { id: 'potatoes', tab: 'kitchen', name: 'Селски картофи', desc: 'Картофките стават по-скъпи', icon: 'potato', values: [0, 1, 2], costs: [260, 1100], fmt: plus, more: { step: 1, grow: 2.2 } },
+  { id: 'syrup', tab: 'kitchen', name: 'Леден сироп', desc: 'Напитките стават по-скъпи', icon: 'drink_fanta', values: [0, 1, 2], costs: [160, 850], fmt: plus, more: { step: 1, grow: 2.2 } },
   // зала
   { id: 'tables', tab: 'hall', name: 'Маси', desc: 'Повече маси = повече клиенти наведнъж', icon: 'table', values: [2, 3, 4, 5, 6], costs: [90, 320, 800, 1700] },
   { id: 'plants', tab: 'hall', name: 'Цветя', desc: 'Клиентите чакат по-търпеливо', icon: 'plant', values: [0, 8, 15], costs: [150, 600], fmt: pct },
-  { id: 'pictures', tab: 'hall', name: 'Картини', desc: 'По-големи бакшиши', icon: 'picture', values: [0, 8, 15], costs: [200, 750], fmt: pct },
+  { id: 'pictures', tab: 'hall', name: 'Картини', desc: 'По-големи бакшиши', icon: 'picture', values: [0, 8, 15], costs: [200, 750], fmt: pct, more: { step: 5, grow: 1.9 } },
   { id: 'jukebox', tab: 'hall', name: 'Музикален автомат', desc: 'Още търпение и бакшиш', icon: 'jukebox', values: [0, 10], costs: [1200], fmt: pct },
   { id: 'neon', tab: 'hall', name: 'Неонова табела', desc: 'Идват повече VIP клиенти', icon: 'neon', values: [0, 1], costs: [1800], fmt: (v) => (v ? 'ДА' : 'НЕ') },
   // персонал
@@ -76,6 +77,21 @@ export const UPGRADES: UpgradeDef[] = [
   { id: 'prep', tab: 'staff', name: 'Помощник', desc: 'Сам реже доматите', icon: 'staff_prep', values: [0, 1], costs: [550], fmt: (v) => (v ? 'нает' : 'няма') },
   { id: 'manager', tab: 'staff', name: 'Мениджър', desc: 'Печели пари, докато играта е затворена', icon: 'staff_manager', values: [0, 1, 2, 3], costs: [1500, 4000, 9000], fmt: (v) => (v ? `${[0, 2, 4, 8][v]} ч.` : 'няма') },
 ];
+
+/** Стойност на подобрението на ниво lvl (и за безкрайните нива). */
+export function upgradeValue(u: UpgradeDef, lvl: number): number {
+  const last = u.values.length - 1;
+  if (lvl <= last || !u.more) return u.values[Math.min(lvl, last)];
+  return u.values[last] + (lvl - last) * u.more.step;
+}
+
+/** Цена за минаване от ниво lvl към lvl+1 (undefined = максимум). */
+export function upgradeCost(u: UpgradeDef, lvl: number): number | undefined {
+  if (lvl < u.costs.length) return u.costs[lvl];
+  if (!u.more) return undefined;
+  const c = u.costs[u.costs.length - 1] * Math.pow(u.more.grow, lvl - u.costs.length + 1);
+  return c < 10000 ? Math.round(c / 50) * 50 : Math.round(c / 500) * 500;
+}
 
 export const UPGRADE_BY_ID: Record<string, UpgradeDef> = Object.fromEntries(UPGRADES.map((u) => [u.id, u]));
 
@@ -183,8 +199,31 @@ export function rng(seed: number) {
   };
 }
 
+/** Безкрайни дни: всичко след последното нормално ниво на локацията. */
+export function isEndless(locId: string, n: number): boolean {
+  const L = LOCATIONS.find((l) => l.id === locId);
+  return !!L && n > L.levels;
+}
+
+// предизвикателство на всеки 5-и безкраен ден (редуват се)
+function endlessChallenge(k: number, customers: number): Challenge | undefined {
+  if (k % 5 !== 0) return undefined;
+  const step = k / 5; // 1, 2, 3...
+  const more = Math.floor(step / 6); // всеки пълен кръг става малко по-трудно
+  const list: Challenge[] = [
+    { type: 'combo', value: 4, text: 'Направи комбо x4' },
+    { type: 'perfectFries', value: 8 + more * 2, text: `Направи ${8 + more * 2} перфектни картофки` },
+    { type: 'perfectDrinks', value: 12 + more * 2, text: `Налей ${12 + more * 2} перфектни напитки` },
+    { type: 'served', value: customers - 2, text: `Обслужи поне ${customers - 2} клиента` },
+    { type: 'combo', value: 5, text: 'Направи комбо x5' },
+    { type: 'noLoss', value: 0, text: 'Не изпускай нито един клиент' },
+  ];
+  return list[(step - 1) % list.length];
+}
+
 export function levelDef(locId: string, n: number): LevelDef {
-  const t = (n - 1) / 19;
+  const endless = isEndless(locId, n);
+  const t = endless ? 1 : (n - 1) / 19;
   const lerp = (a: number, b: number) => a + (b - a) * t;
   const toppings: Topping[] = [];
   if (n >= 3) toppings.push('cheese');
@@ -221,6 +260,16 @@ export function levelDef(locId: string, n: number): LevelDef {
     20: { type: 'combo', value: 4, text: 'Направи комбо x4' },
   };
   def.challenge = ch[n];
+  if (endless) {
+    // след ден 20 трудността расте всеки ден, но плавно доближава таван и никога не става невъзможна
+    const k = n - 20;
+    const f = 1 - Math.exp(-k / 25); // 0 → 1
+    def.customers = Math.min(70, 29 + Math.round(k * 1.1));
+    def.gap = [3.6 - 1.3 * f, 6 - 2.2 * f];
+    def.patience = 24 - 8 * f;
+    def.special = 0.16 + 0.18 * f;
+    def.challenge = endlessChallenge(k, def.customers);
+  }
   // цели — от средната стойност на поръчка
   const r = rng(1000 + n);
   let sum = 0;

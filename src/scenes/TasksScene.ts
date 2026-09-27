@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { W, H } from '../config/game';
-import { S, save, today, totalStars, type DailyTask } from '../data/save';
+import { S, save, today, totalStars, bestDay, type DailyTask } from '../data/save';
 import { button, txt, mkImg, C, roundRect, sparkles, fmt } from '../ui/kit';
 import { menuBg } from '../ui/bg';
 import { TopBar } from '../ui/topbar';
@@ -8,7 +8,7 @@ import { sfx } from '../audio/sfx';
 
 const POOL: Omit<DailyTask, 'progress' | 'claimed'>[] = [
   { id: 'serve', text: 'Обслужи 25 клиента', stat: 'customersServed', goal: 25, reward: 120, gem: 0 },
-  { id: 'earn', text: 'Изкарай 500 лв', stat: 'coinsEarned', goal: 500, reward: 150, gem: 0 },
+  { id: 'earn', text: 'Изкарай 500 €', stat: 'coinsEarned', goal: 500, reward: 150, gem: 0 },
   { id: 'burg', text: 'Направи 20 бургера', stat: 'burgers', goal: 20, reward: 100, gem: 0 },
   { id: 'fries', text: 'Направи 10 перфектни картофки', stat: 'perfectFries', goal: 10, reward: 100, gem: 0 },
   { id: 'drinks', text: 'Налей 10 перфектни напитки', stat: 'perfectDrinks', goal: 10, reward: 100, gem: 0 },
@@ -27,6 +27,7 @@ const ACHS: Ach[] = [
   { id: 'drinks', name: 'Барман', stat: 'perfectDrinks', tiers: [30, 200, 1000], gems: [2, 4, 8] },
   { id: 'stars', name: 'Звезден шеф', stat: () => totalStars(), tiers: [10, 30, 60], gems: [3, 5, 10] },
   { id: 'combo', name: 'Комбо машина', stat: 'bigCombo', tiers: [1, 10, 50], gems: [2, 4, 8] },
+  { id: 'endless', name: 'Безкраен шеф (ден)', stat: () => bestDay('stand'), tiers: [25, 30, 40, 50, 75, 100], gems: [3, 4, 5, 8, 12, 20] },
 ];
 
 export function ensureTasks(): void {
@@ -111,16 +112,21 @@ export class TasksScene extends Phaser.Scene {
     // постижения
     txt(this, 960, 100, 'ПОСТИЖЕНИЯ', 32);
     ACHS.forEach((a, i) => {
-      const y = 160 + i * 76;
+      const y = 152 + i * 68;
       const got = sv.ach[a.id] ?? 0;
       const done = got >= a.tiers.length;
       const goal = done ? a.tiers[a.tiers.length - 1] : a.tiers[got];
       const v = achValue(a);
       const c = this.add.container(960, y);
       const g = this.make.graphics({}, false);
-      roundRect(g, -300, -32, 600, 66, 16, 0xfffdf5, C.brown, 3);
+      roundRect(g, -300, -30, 600, 62, 16, 0xfffdf5, C.brown, 3);
       c.add(g);
-      for (let k = 0; k < a.tiers.length; k++) c.add(mkImg(this, -280 + k * 20, 0, k < got ? 'star' : 'star_empty', 0.3));
+      // звездички за етапите (при много етапи — на два реда)
+      const per = Math.ceil(a.tiers.length / (a.tiers.length > 4 ? 2 : 1));
+      for (let k = 0; k < a.tiers.length; k++) {
+        const row = Math.floor(k / per), rows = Math.ceil(a.tiers.length / per);
+        c.add(mkImg(this, -280 + (k % per) * 20, (row - (rows - 1) / 2) * 20, k < got ? 'star' : 'star_empty', 0.3));
+      }
       c.add(txt(this, -190, -10, a.name, 20, dark).setOrigin(0, 0.5));
       c.add(txt(this, -190, 16, done ? 'Завършено!' : `${fmt(Math.min(v, goal))} / ${fmt(goal)}`, 15, { ...dark, weight: 700 }).setOrigin(0, 0.5));
       if (!done) {

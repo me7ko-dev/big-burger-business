@@ -2,9 +2,9 @@
 
 import Phaser from 'phaser';
 import {
-  W, H, CUST_TYPES, LOCATIONS, levelDef, makeOrder, dishPrice, rng, type LevelDef, type Dish, type Flavor, type CustType,
+  W, H, CUST_TYPES, LOCATIONS, levelDef, isEndless, makeOrder, dishPrice, rng, type LevelDef, type Dish, type Flavor, type CustType,
 } from '../config/game';
-import { S, loc, upValue, save, addStat } from '../data/save';
+import { S, upValue, save, addStat, dayStars, setDayStars, bestDay } from '../data/save';
 import { img, mkImg, txt, button, roundRect, C, floatText, sparkles, bounce, fmt, shade } from '../ui/kit';
 import { sfx } from '../audio/sfx';
 import { Customer, QUEUE_X } from '../game/customer';
@@ -64,6 +64,8 @@ export interface LevelResult {
   challenge?: { text: string; ok: boolean };
   maxCombo: number;
   perfect: number;
+  newDayRecord?: boolean;
+  newCoinRecord?: boolean;
 }
 
 export const TABLE_X = [290, 474, 658, 842, 1026, 1210];
@@ -576,8 +578,13 @@ export class GameScene extends Phaser.Scene {
   serve(item: ReadyItem, target?: Customer, from?: { x: number; y: number }): boolean {
     const c = target ?? this.bestCustomer(item.key);
     if (!c || c.state !== 'order' || c.needs(item.key) < 0) {
-      if (target) this.hint('Не е поръчал това!', target.c.x, 200);
-      else this.hint(item.dish.kind === 'burger' ? 'Никой не иска такъв бургер — хвърли го в кофата' : 'Никой не е поръчал това', item.x, item.y - 70);
+      const wantsBurger = (k: Customer) => k.state === 'order' && k.order.some((o) => !o.done && o.dish.kind === 'burger');
+      if (item.dish.kind === 'burger') {
+        // подсказка: кой какъв бургер чака
+        for (const k of this.customers) if (wantsBurger(k)) bounce(this, k.bubble, 1.12);
+      }
+      if (target) this.hint(item.dish.kind === 'burger' && wantsBurger(target) ? 'Иска друг бургер — виж иконките в балончето!' : 'Не е поръчал това!', target.c.x, 200);
+      else this.hint(item.dish.kind === 'burger' ? 'Никой не иска такъв бургер — виж балончетата или го хвърли в кофата' : 'Никой не е поръчал това', item.x, item.y - 70);
       sfx.nope();
       return false;
     }
@@ -784,7 +791,7 @@ export class GameScene extends Phaser.Scene {
     this.tips += tip;
     this.stat('perfect', perfect);
     const x = c.c.x, y = TABLE_Y - 40;
-    floatText(this, x, y - 40, `+${total} лв`, '#ffe14d', 32);
+    floatText(this, x, y - 40, `+${total} €`, '#ffe14d', 32);
     if (tip > 0) this.time.delayedCall(250, () => floatText(this, x, y - 5, `бакшиш ${tip}`, '#9cff57', 20));
     const n = Math.min(10, 3 + Math.floor(total / 6));
     for (let i = 0; i < n; i++) {
@@ -863,7 +870,7 @@ export class GameScene extends Phaser.Scene {
     roundRect(g, -300, -110, 600, 220, 30, C.cream, C.brown, 6);
     c.add(g);
     c.add(txt(this, 0, -70, `ДЕН ${lv.n}`, 48, { color: '#ff7043' }));
-    c.add(txt(this, 0, -18, `Цел: ${lv.goals[0]} лв`, 30, { color: '#4a2c17', stroke: '#ffffff', strokeW: 0 }));
+    c.add(txt(this, 0, -18, `Цел: ${lv.goals[0]} €`, 30, { color: '#4a2c17', stroke: '#ffffff', strokeW: 0 }));
     if (lv.challenge) c.add(txt(this, 0, 22, `★ ${lv.challenge.text}`, 22, { color: '#8e24aa', stroke: '#ffffff', strokeW: 0 }));
     c.add(txt(this, 0, 66, `${lv.customers} клиента днес`, 22, { color: '#6d4c41', stroke: '#ffffff', strokeW: 0 }));
     c.list.forEach((o) => { if (o instanceof Phaser.GameObjects.Text) this.children.remove(o); });
@@ -912,7 +919,7 @@ export class GameScene extends Phaser.Scene {
         { text: 'Докосни витрината, за да сервираш картофките. После налей колата!', at: () => ({ x: 440, y: 640 }), done: () => !first() || first().state !== 'order' },
       ];
     } else if (tut === 'cheese') {
-      steps = [{ text: 'Ново: СИРЕНЕ! Сложи кюфте в питката и докосни кутията със сирене, преди да затвориш бургера.', at: () => ({ x: this.assembly.bins.cheese.x, y: 456 }), done: () => (this.stats.burgers ?? 0) > 0, auto: 14 }];
+      steps = [{ text: 'Ново: КАШКАВАЛ! Сложи кюфте в питката и докосни кутията с кашкавал, преди да затвориш бургера. Виж в балончето какво иска клиентът!', at: () => ({ x: this.assembly.bins.cheese.x, y: 456 }), done: () => (this.stats.burgers ?? 0) > 0, auto: 14 }];
     } else if (tut === 'tomato') {
       this.holdSpawns = true;
       this.spawn([{ kind: 'burger', top: ['tomato'] }]);
@@ -999,14 +1006,17 @@ export class GameScene extends Phaser.Scene {
     }
     let stars = lv.goals.filter((g) => this.earned >= g).length;
     if (!challengeOk) stars = 0;
-    const ls = loc(this.locId);
-    const prevStars = ls.stars[lv.n - 1] ?? 0;
+    const prevStars = dayStars(lv.n, this.locId);
+    const prevBest = bestDay(this.locId);
     const sv = S();
     sv.coins += this.earned;
     if (stars > prevStars) {
       if (stars === 3 && prevStars < 3) sv.gems += 1;
-      ls.stars[lv.n - 1] = stars;
+      setDayStars(lv.n, stars, this.locId);
     }
+    const newDayRecord = isEndless(this.locId, lv.n) && stars > 0 && lv.n > prevBest;
+    const newCoinRecord = this.earned > (sv.stats.bestDayCoins ?? 0) && this.earned > 0;
+    if (newCoinRecord) sv.stats.bestDayCoins = this.earned;
     addStat('coinsEarned', this.earned);
     addStat('customersServed', this.served);
     addStat('daysPlayed');
@@ -1033,6 +1043,8 @@ export class GameScene extends Phaser.Scene {
       challenge: ch ? { text: ch.text, ok: challengeOk } : undefined,
       maxCombo: this.maxCombo,
       perfect: this.stats.perfect ?? 0,
+      newDayRecord,
+      newCoinRecord,
     };
     this.time.delayedCall(600, () => {
       this.scene.launch('Result', res);

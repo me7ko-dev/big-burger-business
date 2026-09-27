@@ -75,6 +75,20 @@ export const SVGS: Record<string, SvgDef> = {
   pickle_layer: d(96, 16, `<ellipse cx="24" cy="8" rx="18" ry="5.5" fill="#8cc152" ${SW}/><ellipse cx="72" cy="8" rx="18" ry="5.5" fill="#8cc152" ${SW}/>
     ${speckles([[18, 8], [28, 7], [66, 8], [78, 7]], '#dff5b8', 1.6)}`),
 
+  // ------------------------------------------------------------ иконки на съставките в балончето с поръчката
+  chip_cheese: d(40, 40, `<path d="M4 20 L27 7 L37 13 L37 32 Q37 34 35 34 H6 Q4 34 4 32 Z" fill="#ffc928" ${SW}/>
+    <path d="M4 20 L27 7 L37 13 Z" fill="#ffe27a" ${SW}/>
+    <circle cx="14" cy="26" r="3.4" fill="#f3a712"/><circle cx="26" cy="22" r="2.6" fill="#f3a712"/><circle cx="30" cy="29" r="2" fill="#f3a712"/>`),
+  chip_tomato: d(40, 40, `<circle cx="20" cy="20" r="16" fill="#ec3b2e" ${SW}/><circle cx="20" cy="20" r="10.5" fill="#ff8f80"/>
+    <path d="M20 10 V30 M11 16 L29 24 M11 24 L29 16" stroke="#ec3b2e" stroke-width="2.4" stroke-linecap="round"/>
+    ${speckles([[15, 15], [25, 15], [15, 25], [25, 25], [20, 13], [20, 27]], '#ffe082', 1.8)}`),
+  chip_lettuce: d(40, 40, `<path d="M20 37 Q5 33 4 20 Q2 12 8 9 Q9 3 16 5 Q20 1 24 5 Q31 3 32 9 Q38 12 36 20 Q35 33 20 37Z" fill="#6fcf3a" ${SW}/>
+    <path d="M20 35 V9 M20 26 L12 19 M20 26 L28 19 M20 18 L14 13 M20 18 L26 13" stroke="#3d9a1f" stroke-width="2.4" fill="none" stroke-linecap="round"/>`),
+  chip_onion: d(40, 40, `<circle cx="20" cy="20" r="15" fill="#f4e6f7" stroke="#8d4fa0" stroke-width="3"/>
+    <circle cx="20" cy="20" r="9.5" fill="none" stroke="#b27cc2" stroke-width="2.4"/><circle cx="20" cy="20" r="5" fill="#ffffff" stroke="#8d4fa0" stroke-width="2.4"/>`),
+  chip_pickle: d(40, 40, `<circle cx="20" cy="20" r="15" fill="#8cc152" ${SW}/><circle cx="20" cy="20" r="10" fill="#c5e59a"/>
+    ${speckles([[16, 16], [24, 16], [16, 24], [24, 24], [20, 20]], '#6b9a37', 1.8)}`),
+
   // ------------------------------------------------------------ суровини в кашони / кошници
   tomato: d(60, 56, `<circle cx="30" cy="31" r="22" fill="#ec3b2e" ${SW}/>
     <path d="M17 24 Q20 16 28 16" stroke="#ff9b8f" stroke-width="4" fill="none" stroke-linecap="round"/>

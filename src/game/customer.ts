@@ -12,6 +12,9 @@ export const SEAT_Y = 292;
 export const DOOR_X = 62;
 export const QUEUE_X = [165, 215];
 
+// ширина на бургера в балончето: с един бургер има място за по-едри иконки на съставките
+const burgerCellW = (burgers: number) => (burgers === 1 ? 80 : 62);
+
 export type CState = 'walk' | 'queue' | 'toTable' | 'think' | 'order' | 'eat' | 'leave' | 'gone';
 
 export interface OrderLine { dish: Dish; key: string; done: boolean; pending?: boolean; quality: 'perfect' | 'ok'; salted: boolean; icon: Phaser.GameObjects.Container; check?: Phaser.GameObjects.Image }
@@ -55,12 +58,14 @@ export class Customer {
       this.badge = txt(g, 0, -178 * this.s, type.id === 'vip' ? 'VIP' : 'КРИТИК', 16, { color: '#ffe14d', add: false });
       this.c.add(this.badge);
     }
-    this.bubble = g.add.container(0, 0).setDepth(300).setVisible(false);
+    // 'bs' = нормалният размер, за да не остане балончето смачкано, ако подскочи докато се появява
+    this.bubble = g.add.container(0, 0).setDepth(300).setVisible(false).setData('bs', 1);
     this.bubbleBg = g.make.graphics({}, false);
     this.bar = g.make.graphics({}, false);
     this.bubble.add([this.bubbleBg, this.bar]);
+    const nb = dishes.filter((d) => d.kind === 'burger').length;
     for (const d of dishes) {
-      const icon = dishIcon(g, d, 1);
+      const icon = d.kind === 'burger' ? dishIcon(g, d, 1, burgerCellW(nb) - 6) : dishIcon(g, d, nb ? 0.8 : 1);
       this.bubble.add(icon);
       this.order.push({ dish: d, key: dishKey(d), done: false, quality: 'perfect', salted: false, icon });
     }
@@ -74,13 +79,35 @@ export class Customer {
     return Phaser.Math.Clamp(this.patience / this.patienceMax, 0, 1);
   }
 
+  private bubbleY = 0;
+
+  /** Бургерите са в ред отляво, картофките и напитките — на колонки по две до тях.
+   *  Балончето е тясно (да не пречи на съседната маса) и никога не влиза под горната лента. */
   private layoutBubble(): void {
-    const n = this.order.length;
-    const cols = n <= 3 ? n : Math.ceil(n / 2);
-    const rows = n <= 3 ? 1 : 2;
-    const cw = 54, rh = 58;
-    this.bw = Math.max(90, cols * cw + 26);
-    this.bh = rows * rh + 30;
+    const burgers = this.order.filter((o) => o.dish.kind === 'burger');
+    const sides = this.order.filter((o) => o.dish.kind !== 'burger');
+    const hOf = (o: OrderLine) => (o.icon.getData('h') as number) ?? 40;
+    const BW = burgerCellW(burgers.length), SW = burgers.length ? 36 : 48, SH = 37;
+    const cols = burgers.length ? Math.ceil(sides.length / 2) : sides.length;
+    const contentW = burgers.length * BW + cols * SW;
+    const contentH = burgers.length
+      ? Math.max(...burgers.map(hOf), Math.min(2, sides.length) * SH)
+      : Math.max(...sides.map(hOf));
+    this.bw = Math.max(90, contentW + 20);
+    this.bh = contentH + 34;
+    const cy = -this.bh / 2 + 9 + contentH / 2;
+    const x0 = -contentW / 2;
+    burgers.forEach((o, i) => { o.icon.x = x0 + BW * (i + 0.5); o.icon.y = cy; });
+    sides.forEach((o, i) => {
+      if (!burgers.length) { o.icon.x = x0 + SW * (i + 0.5); o.icon.y = cy; return; }
+      const col = Math.floor(i / 2), inCol = Math.min(2, sides.length - col * 2);
+      o.icon.x = x0 + burgers.length * BW + SW * (col + 0.5);
+      o.icon.y = inCol === 2 ? cy + (i % 2 === 0 ? -SH / 2 : SH / 2) : cy;
+    });
+    // над главата; ако няма място — по-ниско (върху косата), с по-къса опашчица
+    const want = SEAT_Y - 162 * this.s - this.bh / 2 - 8;
+    this.bubbleY = Math.max(62 + this.bh / 2, want);
+    const tail = Phaser.Math.Clamp(14 - (this.bubbleY - want), 6, 14);
     const g = this.bubbleBg;
     g.clear();
     g.fillStyle(0x000000, 0.18);
@@ -90,19 +117,12 @@ export class Customer {
     g.lineStyle(3.5, C.brown, 1);
     g.beginPath();
     g.moveTo(-10, this.bh / 2 - 2);
-    g.lineTo(0, this.bh / 2 + 14);
+    g.lineTo(0, this.bh / 2 + tail);
     g.lineTo(10, this.bh / 2 - 2);
     g.closePath();
     g.fillPath();
     g.strokePath();
     g.fillRect(-9, this.bh / 2 - 5, 18, 6);
-    this.order.forEach((o, i) => {
-      const r = rows === 1 ? 0 : i < cols ? 0 : 1;
-      const inRow = rows === 1 ? n : r === 0 ? cols : n - cols;
-      const ci = r === 0 ? i : i - cols;
-      o.icon.x = (ci - (inRow - 1) / 2) * cw;
-      o.icon.y = -this.bh / 2 + 12 + rh / 2 + r * rh - 4;
-    });
     this.drawBar();
   }
 
@@ -204,7 +224,7 @@ export class Customer {
 
   private showOrder(): void {
     this.state = 'order';
-    this.bubble.setPosition(this.c.x, SEAT_Y - 162 * this.s - this.bh / 2 - 8);
+    this.bubble.setPosition(this.c.x, this.bubbleY);
     this.bubble.setVisible(true);
     this.bubble.setScale(0.2);
     this.g.tweens.add({ targets: this.bubble, scale: 1, duration: 300, ease: 'Back.Out' });

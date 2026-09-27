@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { W, H, LOCATIONS, levelDef } from '../config/game';
-import { S, save, loc, totalStars } from '../data/save';
+import { S, save, loc, totalStars, bestDay, dayStars } from '../data/save';
 import { button, txt, mkImg, img, C, panel, dim, roundRect, sparkles, shade, fmt } from '../ui/kit';
 import { menuBg } from '../ui/bg';
 import { TopBar } from '../ui/topbar';
@@ -101,6 +101,31 @@ export class MapScene extends Phaser.Scene {
         this.tweens.add({ targets: hand, x: x + 38, y: y + 28, duration: 400, yoyo: true, repeat: -1 });
       }
     }
+    this.endlessBar(layer, L.id, L.levels, ls.stars[L.levels - 1] > 0);
+  }
+
+  // безкрайните дни след последното ниво
+  endlessBar(layer: Phaser.GameObjects.Container, locId: string, levels: number, open: boolean): void {
+    const y = 598;
+    const best = bestDay(locId);
+    const next = Math.max(levels + 1, best + 1);
+    const g = this.make.graphics({}, false);
+    roundRect(g, W / 2 - 360, y - 30, 720, 60, 22, open ? 0x6a1b9a : 0x9e9e9e, C.brown, 5);
+    g.fillStyle(0xffffff, 0.18);
+    g.fillRoundedRect(W / 2 - 350, y - 25, 700, 12, 6);
+    layer.add(g);
+    if (!open) {
+      layer.add(mkImg(this, W / 2 - 320, y, 'lock', 0.5));
+      layer.add(txt(this, W / 2 + 10, y, `БЕЗКРАЙНИ ДНИ — спечели ден ${levels}`, 24, { add: false }));
+      return;
+    }
+    layer.add(txt(this, W / 2 - 336, y - 11, 'БЕЗКРАЙНИ ДНИ', 24, { color: '#ffe14d', add: false }).setOrigin(0, 0.5));
+    const rec = best > levels ? `Рекорд: ден ${best}` : 'Още няма рекорд';
+    const coins = S().stats.bestDayCoins ?? 0;
+    layer.add(txt(this, W / 2 - 336, y + 15, coins > 0 ? `${rec} · най-много за ден: ${fmt(coins)} €` : rec, 16, { color: '#f3e5f5', add: false }).setOrigin(0, 0.5));
+    const b = button(this, W / 2 + 240, y, 220, 48, `ДЕН ${next}`, C.green, () => this.levelPopup(locId, next), { size: 26 });
+    layer.add(b);
+    this.tweens.add({ targets: b, scale: 1.06, duration: 600, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
   }
 
   lockedView(layer: Phaser.GameObjects.Container): void {
@@ -115,8 +140,8 @@ export class MapScene extends Phaser.Scene {
       return;
     }
     const have = totalStars();
-    p.add(txt(this, 0, 0, `Нужни: ${L.unlockStars} звезди и ${fmt(L.unlockCost)} лв`, 28, { color: '#4a2c17', stroke: '#fff', strokeW: 0, add: false }));
-    p.add(txt(this, 0, 45, `Имаш: ${have} звезди и ${fmt(S().coins)} лв`, 22, { color: '#6d4c41', stroke: '#fff', strokeW: 0, add: false }));
+    p.add(txt(this, 0, 0, `Нужни: ${L.unlockStars} звезди и ${fmt(L.unlockCost)} €`, 28, { color: '#4a2c17', stroke: '#fff', strokeW: 0, add: false }));
+    p.add(txt(this, 0, 45, `Имаш: ${have} звезди и ${fmt(S().coins)} €`, 22, { color: '#6d4c41', stroke: '#fff', strokeW: 0, add: false }));
     const can = have >= L.unlockStars && S().coins >= L.unlockCost;
     p.add(button(this, 0, 120, 300, 76, 'ОТКЛЮЧИ', C.green, () => {
       if (!can) { sfx.nope(); return; }
@@ -132,16 +157,16 @@ export class MapScene extends Phaser.Scene {
 
   levelPopup(locId: string, n: number): void {
     const def = levelDef(locId, n);
-    const st = loc(locId).stars[n - 1];
+    const st = dayStars(n, locId);
     const layer = this.add.container(0, 0).setDepth(1000);
     layer.add(dim(this));
     const p = panel(this, W / 2, 390, 560, 470, C.cream, `ДЕН ${n}`, C.red);
     layer.add(p);
     for (let k = 0; k < 3; k++) p.add(mkImg(this, (k - 1) * 80, -150, k < st ? 'star' : 'star_empty', 1));
     const dark = { color: '#4a2c17', stroke: '#fff', strokeW: 0, add: false } as const;
-    p.add(txt(this, 0, -80, `Цели: ${def.goals[0]} / ${def.goals[1]} / ${def.goals[2]} лв`, 26, dark));
+    p.add(txt(this, 0, -80, `Цели: ${def.goals[0]} / ${def.goals[1]} / ${def.goals[2]} €`, 26, dark));
     p.add(txt(this, 0, -40, `${def.customers} клиента`, 22, { ...dark, weight: 700 }));
-    const menu = ['бургери', ...def.toppings.map((t) => ({ cheese: 'сирене', tomato: 'домати', lettuce: 'маруля', onion: 'лук', pickle: 'краставички' }[t])), def.fries ? 'картофки' : '', ...def.drinks.map((d) => ({ cola: 'кола', fanta: 'фанта', sprite: 'спрайт' }[d]))].filter(Boolean);
+    const menu = ['бургери', ...def.toppings.map((t) => ({ cheese: 'кашкавал', tomato: 'домати', lettuce: 'маруля', onion: 'лук', pickle: 'краставички' }[t])), def.fries ? 'картофки' : '', ...def.drinks.map((d) => ({ cola: 'кола', fanta: 'фанта', sprite: 'спрайт' }[d]))].filter(Boolean);
     p.add(txt(this, 0, 5, `Меню: ${menu.join(', ')}`, 19, { ...dark, weight: 700, wrap: 480 }));
     if (def.challenge) p.add(txt(this, 0, 60, `★ ${def.challenge.text}`, 22, { color: '#8e24aa', stroke: '#fff', strokeW: 0, add: false }));
     p.add(button(this, -130, 160, 200, 76, 'НАЗАД', C.gray, () => layer.destroy(), { size: 28 }));

@@ -1,11 +1,12 @@
 // Прогресът на играча — пази се в localStorage и се записва автоматично.
 
-import { LOCATIONS, UPGRADE_BY_ID, XP_PER_LEVEL } from '../config/game';
+import { LOCATIONS, UPGRADE_BY_ID, XP_PER_LEVEL, upgradeValue } from '../config/game';
 
 export interface LocSave {
   unlocked: boolean;
   stars: number[]; // звезди за всяко ниво (индекс = ниво-1)
   up: Record<string, number>; // ниво на всяко подобрение
+  endless?: number[]; // звезди за безкрайните дни (индекс 0 = първият ден след последното ниво)
 }
 
 export interface SaveData {
@@ -104,7 +105,33 @@ export function upLevel(id: string, locId = data.current): number {
 
 export function upValue(id: string, locId = data.current): number {
   const def = UPGRADE_BY_ID[id];
-  return def.values[Math.min(upLevel(id, locId), def.values.length - 1)];
+  return upgradeValue(def, upLevel(id, locId));
+}
+
+/** Звезди за ден n (и за нормалните, и за безкрайните дни). */
+export function dayStars(n: number, locId = data.current): number {
+  const ls = loc(locId);
+  const L = LOCATIONS.find((l) => l.id === locId)!;
+  return n <= L.levels ? ls.stars[n - 1] ?? 0 : ls.endless?.[n - L.levels - 1] ?? 0;
+}
+
+export function setDayStars(n: number, stars: number, locId = data.current): void {
+  const ls = loc(locId);
+  const L = LOCATIONS.find((l) => l.id === locId)!;
+  if (n <= L.levels) { ls.stars[n - 1] = stars; return; }
+  const e = (ls.endless ??= []);
+  while (e.length < n - L.levels) e.push(0);
+  e[n - L.levels - 1] = stars;
+}
+
+/** Най-далечният спечелен ден в локацията (0 = нищо). */
+export function bestDay(locId = data.current): number {
+  const ls = loc(locId);
+  const L = LOCATIONS.find((l) => l.id === locId)!;
+  const e = ls.endless ?? [];
+  for (let i = e.length - 1; i >= 0; i--) if (e[i] > 0) return L.levels + i + 1;
+  for (let i = ls.stars.length - 1; i >= 0; i--) if (ls.stars[i] > 0) return i + 1;
+  return 0;
 }
 
 export function totalStars(): number {

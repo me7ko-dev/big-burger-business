@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { W, H, UPGRADES, LOCATIONS, type UpgradeDef, type UpgradeTab } from '../config/game';
+import { W, H, UPGRADES, LOCATIONS, upgradeValue, upgradeCost, type UpgradeDef, type UpgradeTab } from '../config/game';
 import { S, save, upLevel, loc } from '../data/save';
 import { button, txt, mkImg, C, roundRect, sparkles, fmt, type Button } from '../ui/kit';
 import { menuBg } from '../ui/bg';
@@ -96,7 +96,7 @@ export class ShopScene extends Phaser.Scene {
 
   private card(u: UpgradeDef, x: number, y: number, w: number, h: number): void {
     const lvl = upLevel(u.id);
-    const max = u.values.length - 1;
+    const max = u.values.length - 1; // нормални нива (безкрайните продължават след тях)
     const c = this.add.container(x, y);
     this.list!.add(c);
     const g = this.make.graphics({}, false);
@@ -118,14 +118,15 @@ export class ShopScene extends Phaser.Scene {
       roundRect(pg, -w / 2 + 132 + k * 26, h / 2 - 32, 20, 12, 6, k < lvl ? 0x43a047 : 0xd7ccc8, C.brown, 2);
       c.add(pg);
     }
+    if (u.more && lvl > max) c.add(txt(this, -w / 2 + 140 + max * 26, h / 2 - 27, `+${lvl - max}`, 16, { color: '#8e24aa', stroke: '#fff', strokeW: 0, add: false }).setOrigin(0, 0.5));
     const f = u.fmt ?? ((v: number) => String(v));
-    const valTxt = lvl < max ? `${f(u.values[lvl])}  →  ${f(u.values[lvl + 1])}` : `${f(u.values[lvl])}`;
+    const cost = upgradeCost(u, lvl);
+    const valTxt = cost !== undefined ? `${f(upgradeValue(u, lvl))}  →  ${f(upgradeValue(u, lvl + 1))}` : `${f(upgradeValue(u, lvl))}`;
     c.add(txt(this, -w / 2 + 132, -h / 2 + 96, valTxt, 18, { color: '#2e7d32', stroke: '#fff', strokeW: 0, add: false }).setOrigin(0, 0.5));
-    if (lvl >= max) {
+    if (cost === undefined) {
       c.add(txt(this, w / 2 - 70, h / 2 - 34, 'МАКС', 22, { color: '#ffb300', add: false }));
       return;
     }
-    const cost = u.costs[lvl];
     const can = S().coins >= cost;
     const hire = u.tab === 'staff' && lvl === 0;
     const b: Button = button(this, w / 2 - 74, h / 2 - 34, 132, 52, fmt(cost), can ? C.green : 0x9e9e9e, () => {
@@ -172,7 +173,7 @@ export class ShopScene extends Phaser.Scene {
     c.add(g);
     const dark = { color: '#4a2c17', stroke: '#fff', strokeW: 0, add: false } as const;
     c.add(txt(this, -120, -30, 'Смени диаманти за пари', 26, dark));
-    c.add(txt(this, -120, 18, '5 диаманта = 400 лв', 20, { ...dark, weight: 700 }));
+    c.add(txt(this, -120, 18, '5 диаманта = 400 €', 20, { ...dark, weight: 700 }));
     c.add(mkImg(this, -360, 0, 'gem', 1.4));
     c.add(button(this, 270, 0, 200, 70, 'СМЕНИ', C.orange, () => {
       if (sv.gems < 5) { sfx.nope(); this.flash('Нужни са 5 диаманта'); return; }

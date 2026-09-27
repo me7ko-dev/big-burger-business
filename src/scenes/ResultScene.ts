@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { W, H, LOCATIONS } from '../config/game';
+import { W, H } from '../config/game';
 import { S, save, addXp } from '../data/save';
 import { button, panel, txt, img, mkImg, C, sparkles, fmt } from '../ui/kit';
 import { sfx } from '../audio/sfx';
@@ -42,19 +42,21 @@ export class ResultScene extends Phaser.Scene {
     const lines: [string, string][] = [
       ['Обслужени клиенти', `${r.served} / ${r.total}`],
       ['Изгубени клиенти', String(r.lost)],
-      ['Бакшиши', `${r.tips} лв`],
+      ['Бакшиши', `${r.tips} €`],
       ['Най-голямо комбо', r.maxCombo >= 2 ? `x${r.maxCombo}` : '—'],
-      ['Цел за 1 звезда', `${r.goals[0]} лв`],
+      ['Цел за 1 звезда', `${r.goals[0]} €`],
     ];
     lines.forEach(([a, b], i) => {
       const y = -35 + i * 34;
       p.add(txt(this, -200, y, a, 22, { ...dark, weight: 700 }).setOrigin(0, 0.5));
       p.add(txt(this, 200, y, b, 22, { ...dark }).setOrigin(1, 0.5));
     });
+    const rec = r.newDayRecord ? `НОВ РЕКОРД: ДЕН ${r.n}!` : r.newCoinRecord && r.n > 1 ? 'НОВ РЕКОРД ЗА ПАРИ!' : '';
+    const chY = rec ? 132 : 145;
     if (r.challenge) {
-      p.add(txt(this, 0, 145, `${r.challenge.ok ? '✔' : '✘'} ${r.challenge.text}`, 22, { color: r.challenge.ok ? '#2e7d32' : '#c62828', stroke: '#ffffff', strokeW: 0, add: false }));
+      p.add(txt(this, 0, chY, `${r.challenge.ok ? '✔' : '✘'} ${r.challenge.text}`, 22, { color: r.challenge.ok ? '#2e7d32' : '#c62828', stroke: '#ffffff', strokeW: 0, add: false }));
     } else if (!win) {
-      p.add(txt(this, 0, 145, 'Не стигна целта — подобри кухнята в магазина!', 20, { color: '#c62828', stroke: '#ffffff', strokeW: 0, add: false }));
+      p.add(txt(this, 0, chY, 'Не стигна целта — подобри кухнята в магазина!', 20, { color: '#c62828', stroke: '#ffffff', strokeW: 0, add: false }));
     }
     // опит
     const sv = S();
@@ -79,8 +81,19 @@ export class ResultScene extends Phaser.Scene {
     }
     save();
 
-    const L = LOCATIONS.find((l) => l.id === r.loc)!;
-    const hasNext = r.n < L.levels;
+    // рекорди
+    if (rec) {
+      const ry = r.challenge ? 168 : 158;
+      const t = txt(this, 0, ry, `★ ${rec} ★`, 26, { color: '#ffb300', add: false }).setScale(0);
+      p.add(t);
+      this.time.delayedCall(1500, () => {
+        this.tweens.add({ targets: t, scale: 1, duration: 350, ease: 'Back.Out' });
+        this.tweens.add({ targets: t, scale: 1.08, duration: 500, delay: 400, yoyo: true, repeat: -1 });
+        sparkles(this, W / 2, 390 + ry, 16, 'star', 160, 900);
+      });
+    }
+    // след последното ниво идват безкрайните дни — винаги има „напред“
+    const hasNext = true;
     const bw = 190;
     p.add(button(this, -200, 225, bw, 72, 'ОТНОВО', C.orange, () => this.go('Game', { loc: r.loc, n: r.n })));
     p.add(button(this, 0, 225, bw, 72, 'МАГАЗИН', C.purple, () => this.go('Shop', { back: 'Map' })));
